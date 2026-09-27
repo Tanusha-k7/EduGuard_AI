@@ -1,0 +1,2953 @@
+================================================================================
+EDUGUARD AI — PROJECT CODE AND NOTEBOOK REPORT
+================================================================================
+
+
+================================================================================
+FILE: C:\Users\User\Desktop\EduGuard_AI\streamlit_app.py
+================================================================================
+
+import requests
+import streamlit as st
+
+API_URL = "http://127.0.0.1:8000/predict"
+
+st.set_page_config(
+    page_title="EduGuard AI",
+    page_icon="🎓",
+    layout="wide"
+)
+
+st.title("🎓 EduGuard AI")
+st.subheader("Student Performance Prediction and Early Warning System")
+st.write(
+    "Enter a student's information and early learning activity "
+    "to receive a predicted academic outcome."
+)
+
+st.info(
+    "This is an experimental model. Its prediction is an estimate, "
+    "not a guaranteed student outcome."
+)
+
+with st.form("student_prediction_form"):
+
+    st.header("1. Course Information")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        code_module = st.selectbox(
+            "Module",
+            ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG"]
+        )
+
+    with col2:
+        code_presentation = st.selectbox(
+            "Presentation",
+            ["2013J", "2014J", "2013B", "2014B"]
+        )
+
+    date_registration_num = st.number_input(
+        "Registration date (days relative to course start)",
+        value=-30.0,
+        step=1.0
+    )
+
+    st.header("2. Early Learning Activity")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        early_assessment_count = st.number_input(
+            "Early assessments completed",
+            min_value=0,
+            value=2,
+            step=1
+        )
+
+        early_mean_score = st.number_input(
+            "Average early assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=75.0
+        )
+
+        early_max_score = st.number_input(
+            "Highest early assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=85.0
+        )
+
+        early_min_score = st.number_input(
+            "Lowest early assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=65.0
+        )
+
+    with col2:
+        early_total_clicks = st.number_input(
+            "Total VLE clicks by Day 28",
+            min_value=0,
+            value=120,
+            step=1
+        )
+
+        early_active_days = st.number_input(
+            "Active learning days",
+            min_value=0,
+            max_value=28,
+            value=15,
+            step=1
+        )
+
+        early_unique_sites = st.number_input(
+            "Unique learning resources accessed",
+            min_value=0,
+            value=8,
+            step=1
+        )
+
+    st.header("3. Student Background")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        gender = st.selectbox("Gender", ["M", "F"])
+
+        region = st.selectbox(
+            "Region",
+            [
+                "East Anglian Region",
+                "Scotland",
+                "North Western Region",
+                "South East Region",
+                "West Midlands Region",
+                "Wales",
+                "North Region",
+                "South Region",
+                "South West Region",
+                "East Midlands Region",
+                "Yorkshire Region",
+                "London Region",
+                "South West England",
+                "East Midlands",
+                "Other Region"
+            ]
+        )
+
+        highest_education = st.selectbox(
+            "Highest education",
+            [
+                "A Level or Equivalent",
+                "HE Qualification",
+                "Lower Than A Level",
+                "Post Graduate Qualification",
+                "No Formal quals"
+            ]
+        )
+
+    with col2:
+        imd_band = st.selectbox(
+            "IMD band",
+            [
+                "0-10%",
+                "10-20%",
+                "20-30%",
+                "30-40%",
+                "40-50%",
+                "50-60%",
+                "60-70%",
+                "70-80%",
+                "80-90%",
+                "90-100%",
+                "Unknown"
+            ]
+        )
+
+        age_band = st.selectbox(
+            "Age band",
+            ["0-35", "35-55", "55<="]
+        )
+
+        num_of_prev_attempts = st.number_input(
+            "Previous attempts",
+            min_value=0,
+            value=0,
+            step=1
+        )
+
+    with col3:
+        studied_credits = st.number_input(
+            "Studied credits",
+            min_value=0,
+            value=60,
+            step=1
+        )
+
+        disability = st.selectbox(
+            "Declared disability",
+            ["N", "Y"]
+        )
+
+    submitted = st.form_submit_button(
+        "Predict Student Outcome",
+        type="primary",
+        use_container_width=True
+    )
+
+if submitted:
+
+    student_data = {
+        "code_module": code_module,
+        "code_presentation": code_presentation,
+        "date_registration_num": date_registration_num,
+        "early_assessment_count": early_assessment_count,
+        "early_mean_score": early_mean_score,
+        "early_max_score": early_max_score,
+        "early_min_score": early_min_score,
+        "early_total_clicks": early_total_clicks,
+        "early_active_days": early_active_days,
+        "early_unique_sites": early_unique_sites,
+        "gender": gender,
+        "region": region,
+        "highest_education": highest_education,
+        "imd_band": imd_band,
+        "age_band": age_band,
+        "num_of_prev_attempts": num_of_prev_attempts,
+        "studied_credits": studied_credits,
+        "disability": disability
+    }
+
+    try:
+        with st.spinner("Getting prediction from EduGuard AI..."):
+            response = requests.post(
+                API_URL,
+                json=student_data,
+                timeout=30
+            )
+
+        if response.status_code == 200:
+            result = response.json()
+
+            st.header("Prediction Result")
+
+            outcome = result["predicted_outcome"]
+            risk = result["risk_probability"]
+
+            st.metric("Predicted Outcome", outcome)
+            st.metric("Estimated Risk of Fail or Withdrawal", f"{risk:.1%}")
+
+            st.subheader("Model-estimated class probabilities")
+
+            probabilities = result["class_probabilities"]
+
+            for class_name, probability in probabilities.items():
+                st.write(f"**{class_name}: {probability:.1%}**")
+                st.progress(float(probability))
+
+            st.caption(result.get("note", ""))
+
+            st.warning(
+                "Use this result as an early-support signal, not as a "
+                "final judgment about a student. The model's probabilities "
+                "are estimates and may be inaccurate."
+            )
+
+        else:
+            st.error(
+                f"API returned status {response.status_code}: "
+                f"{response.text}"
+            )
+
+    except requests.exceptions.ConnectionError:
+        st.error(
+            "Could not connect to the prediction API. "
+            "Make sure the FastAPI server is running at "
+            "http://127.0.0.1:8000."
+        )
+
+    except requests.exceptions.RequestException as error:
+        st.error(f"Request failed: {error}")
+
+
+
+================================================================================
+FILE: C:\Users\User\Desktop\EduGuard_AI\app.py
+================================================================================
+
+from pathlib import Path
+
+import joblib
+import pandas as pd
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+# Load the trained model
+PROJECT_DIR = Path(__file__).resolve().parent
+MODEL_PATH = PROJECT_DIR / "models" / "eduguard_model.joblib"
+
+model = joblib.load(MODEL_PATH)
+
+
+# Create the FastAPI application
+app = FastAPI(
+    title="EduGuard AI API",
+    description="Student Performance Prediction and Early Warning System",
+    version="1.0.0"
+)
+
+
+# Input schema: 18 features expected by the trained model
+class StudentInput(BaseModel):
+    code_module: str
+    code_presentation: str
+    date_registration_num: float
+    early_assessment_count: float
+    early_mean_score: float
+    early_max_score: float
+    early_min_score: float
+    early_total_clicks: float
+    early_active_days: float
+    early_unique_sites: float
+    gender: str
+    region: str
+    highest_education: str
+    imd_band: str
+    age_band: str
+    num_of_prev_attempts: float
+    studied_credits: float
+    disability: str
+
+
+@app.get("/")
+def home():
+    return {
+        "message": "EduGuard AI API is running",
+        "model_loaded": True
+    }
+
+
+@app.post("/predict")
+def predict_student_outcome(student: StudentInput):
+
+    # Convert submitted data into a one-row DataFrame
+    input_data = pd.DataFrame([student.model_dump()])
+
+    # Predict student outcome and class probabilities
+    prediction = model.predict(input_data)[0]
+    probabilities = model.predict_proba(input_data)[0]
+
+    # Map each class to its probability
+    probability_by_class = {
+        str(class_name): float(probability)
+        for class_name, probability in zip(model.classes_, probabilities)
+    }
+
+    # Combined model-estimated probability of Fail or Withdrawn
+    risk_probability = (
+        probability_by_class.get("Fail", 0.0)
+        + probability_by_class.get("Withdrawn", 0.0)
+    )
+
+    return {
+        "predicted_outcome": str(prediction),
+        "class_probabilities": {
+            name: round(probability, 4)
+            for name, probability in probability_by_class.items()
+        },
+        "risk_probability": round(risk_probability, 4),
+        "note": (
+            "Risk probability is the model-estimated combined probability "
+            "of Fail or Withdrawn. It is not a guaranteed outcome."
+        )
+    }
+
+
+
+================================================================================
+FILE: C:\Users\User\Desktop\EduGuard_AI\01_oulad_dataset_exploration.ipynb
+================================================================================
+
+--- CELL 1 [code] ---
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+print("EduGuard AI environment ready!")
+print("Pandas:", pd.__version__)
+print("NumPy:", np.__version__)
+
+--- CELL 2 [code] ---
+from pathlib import Path
+
+DATA_DIR = Path(r"C:\Users\User\Desktop\EduGuard_AI\data\raw")
+
+print(DATA_DIR.exists())
+
+--- CELL 3 [code] ---
+for file in sorted(DATA_DIR.glob("*.csv")):
+    print(file.name)
+
+--- CELL 4 [code] ---
+# Load the smaller datasets first
+
+student_info = pd.read_csv(DATA_DIR / "studentInfo.csv")
+student_registration = pd.read_csv(DATA_DIR / "studentRegistration.csv")
+student_assessment = pd.read_csv(DATA_DIR / "studentAssessment.csv")
+assessments = pd.read_csv(DATA_DIR / "assessments.csv")
+courses = pd.read_csv(DATA_DIR / "courses.csv")
+vle = pd.read_csv(DATA_DIR / "vle.csv")
+
+print("All smaller datasets loaded successfully!")
+
+--- CELL 5 [code] ---
+datasets = {
+    "Student Info": student_info,
+    "Student Registration": student_registration,
+    "Student Assessment": student_assessment,
+    "Assessments": assessments,
+    "Courses": courses,
+    "VLE": vle
+}
+
+for name, df in datasets.items():
+    print(f"{name}: {df.shape}")
+
+--- CELL 6 [code] ---
+student_info.head()
+
+--- CELL 7 [code] ---
+print("Student assessment rows:", len(student_assessment))
+
+print("\nColumn names:")
+print(student_assessment.columns.tolist())
+
+print("\nFirst five records:")
+display(student_assessment.head())
+
+--- CELL 8 [code] ---
+student_info.info()
+
+--- CELL 9 [code] ---
+student_info.isnull().sum()
+
+--- CELL 10 [code] ---
+student_info["final_result"].value_counts()
+
+--- CELL 11 [code] ---
+student_info["final_result"].value_counts(normalize=True) * 100
+
+--- CELL 12 [code] ---
+plt.figure(figsize=(8, 5))
+
+sns.countplot(
+    data=student_info,
+    x="final_result",
+    order=student_info["final_result"].value_counts().index
+)
+
+plt.title("Distribution of Student Final Results")
+plt.xlabel("Final Result")
+plt.ylabel("Number of Students")
+plt.show()
+
+--- CELL 13 [code] ---
+# Check for special missing-value markers
+
+for column in student_info.columns:
+    count = (student_info[column] == "?").sum()
+
+    if count > 0:
+        print(column, ":", count, "special missing values")
+
+--- CELL 14 [code] ---
+print("Missing IMD values:")
+print((student_info["imd_band"] == "?").sum())
+
+print("\nAvailable IMD values:")
+print((student_info["imd_band"] != "?").sum())
+
+print("\nPercentage missing:")
+print(
+    (student_info["imd_band"] == "?").mean() * 100
+)
+
+--- CELL 15 [code] ---
+student_info["imd_band"].value_counts()
+
+--- CELL 16 [code] ---
+# Check for completely identical rows
+
+print("Exact duplicate rows:", student_info.duplicated().sum())
+
+--- CELL 17 [code] ---
+# Check whether a student has multiple records
+# for the same course presentation
+
+duplicate_records = student_info.duplicated(
+    subset=["id_student", "code_module", "code_presentation"]
+)
+
+print("Duplicate student-course records:", duplicate_records.sum())
+
+--- CELL 18 [markdown] ---
+## Dataset Exploration — Student Information
+
+- Total records: 32,593
+- Total columns: 12
+- Numerical columns: 3
+- Categorical columns: 9
+- Actual null values: 0
+- Special missing values in imd_band: 1,111
+- Percentage of missing IMD values: 3.41%
+- Exact duplicate rows: 0
+- Duplicate student-course records: 0
+
+### Initial Observations
+1. The dataset contains four final outcome categories.
+2. Pass is the most frequent outcome.
+3. Withdrawn is the second most frequent outcome.
+4. The imd_band column contains special missing-value markers.
+5. No duplicate student-course records were detected.
+
+--- CELL 19 [code] ---
+student_assessment.isnull().sum()
+
+--- CELL 20 [code] ---
+student_assessment["score"].describe()
+
+--- CELL 21 [code] ---
+student_assessment[
+    (student_assessment["score"] < 0) |
+    (student_assessment["score"] > 100)
+]
+
+--- CELL 22 [code] ---
+print(student_assessment["score"].dtype)
+
+--- CELL 23 [code] ---
+student_assessment["score"].unique()[:20]
+
+--- CELL 24 [code] ---
+numeric_scores = pd.to_numeric(
+    student_assessment["score"],
+    errors="coerce"
+)
+
+print("Values that cannot be converted:", numeric_scores.isna().sum())
+
+--- CELL 25 [code] ---
+invalid_scores = student_assessment.loc[
+    numeric_scores.isna(),
+    "score"
+]
+
+print("Number of non-numeric score entries:", len(invalid_scores))
+print("\nValues and their counts:")
+print(invalid_scores.value_counts(dropna=False))
+
+--- CELL 26 [code] ---
+student_assessment["score_numeric"] = pd.to_numeric(
+    student_assessment["score"].replace("?", pd.NA),
+    errors="coerce"
+)
+
+print("Missing numeric scores:", student_assessment["score_numeric"].isna().sum())
+print("\nNumeric score summary:")
+print(student_assessment["score_numeric"].describe())
+
+--- CELL 27 [code] ---
+plt.figure(figsize=(8, 5))
+
+sns.histplot(
+    data=student_assessment,
+    x="score_numeric",
+    bins=20,
+    kde=True
+)
+
+plt.title("Distribution of Student Assessment Scores")
+plt.xlabel("Assessment Score")
+plt.ylabel("Number of Records")
+plt.show()
+
+--- CELL 28 [code] ---
+print("Shape:", assessments.shape)
+
+print("\nFirst 5 rows:")
+display(assessments.head())
+
+print("\nDataset information:")
+assessments.info()
+
+print("\nMissing values:")
+print(assessments.isnull().sum())
+
+
+--- CELL 29 [code] ---
+print("Assessment types and counts:")
+print(assessments["assessment_type"].value_counts(dropna=False))
+
+print("\nDate values that are not numeric:")
+numeric_dates = pd.to_numeric(assessments["date"], errors="coerce")
+print(assessments.loc[numeric_dates.isna(), "date"].value_counts(dropna=False))
+
+print("\nAssessment weight summary:")
+print(assessments["weight"].describe())
+
+--- CELL 30 [code] ---
+print("Assessments with missing dates:")
+display(assessments[assessments["date"] == "?"])
+
+print("\nAssessments with zero weight:")
+display(assessments[assessments["weight"] == 0])
+
+--- CELL 31 [code] ---
+print("Shape:", courses.shape)
+
+print("\nFirst 5 rows:")
+display(courses.head())
+
+print("\nDataset information:")
+courses.info()
+
+print("\nMissing values:")
+print(courses.isnull().sum())
+
+print("\nDuplicate rows:")
+print(courses.duplicated().sum())
+
+--- CELL 32 [code] ---
+print("Shape:", student_registration.shape)
+
+print("\nFirst 5 rows:")
+display(student_registration.head())
+
+print("\nDataset information:")
+student_registration.info()
+
+print("\nMissing values:")
+print(student_registration.isnull().sum())
+
+print("\nSpecial missing-value markers:")
+for column in student_registration.columns:
+    count = (student_registration[column] == "?").sum()
+    if count > 0:
+        print(f"{column}: {count}")
+
+--- CELL 33 [code] ---
+print("Rows with missing registration dates:")
+display(
+    student_registration[
+        student_registration["date_registration"] == "?"
+    ].head(10)
+)
+
+print("\nCount of records with a recorded withdrawal date:")
+print(
+    (student_registration["date_unregistration"] != "?").sum()
+)
+
+--- CELL 34 [code] ---
+assessment_details = student_assessment.merge(
+    assessments[["id_assessment", "assessment_type"]],
+    on="id_assessment",
+    how="left"
+)
+
+print("Assessment records by type:")
+print(assessment_details["assessment_type"].value_counts(dropna=False))
+
+print("\nNumber of records without a matching assessment type:")
+print(assessment_details["assessment_type"].isna().sum())
+
+--- CELL 35 [code] ---
+print("Unique students in student_assessment:")
+print(student_assessment["id_student"].nunique())
+
+print("\nUnique assessments:")
+print(student_assessment["id_assessment"].nunique())
+
+print("\nRecords per student (summary):")
+print(student_assessment.groupby("id_student").size().describe())
+
+--- CELL 36 [code] ---
+print(
+    "Duplicate student-assessment pairs:",
+    student_assessment.duplicated(
+        subset=["id_student", "id_assessment"]
+    ).sum()
+)
+
+--- CELL 37 [code] ---
+student_vle_path = DATA_DIR / "studentVle.csv"
+
+print("File exists:", student_vle_path.exists())
+print("File size in MB:", round(student_vle_path.stat().st_size / (1024 * 1024), 2))
+
+--- CELL 38 [code] ---
+student_vle_sample = pd.read_csv(
+    student_vle_path,
+    nrows=5
+)
+
+display(student_vle_sample)
+
+print("\nColumns:")
+print(student_vle_sample.columns.tolist())
+
+--- CELL 39 [code] ---
+chunk_size = 100_000
+
+total_rows = 0
+unique_students = set()
+total_clicks = 0
+min_date = None
+max_date = None
+
+for chunk in pd.read_csv(student_vle_path, chunksize=chunk_size):
+    total_rows += len(chunk)
+    unique_students.update(chunk["id_student"].unique())
+    total_clicks += chunk["sum_click"].sum()
+
+    chunk_min = chunk["date"].min()
+    chunk_max = chunk["date"].max()
+
+    min_date = chunk_min if min_date is None else min(min_date, chunk_min)
+    max_date = chunk_max if max_date is None else max(max_date, chunk_max)
+
+print("Total rows:", total_rows)
+print("Unique students:", len(unique_students))
+print("Total clicks:", total_clicks)
+print("Minimum date:", min_date)
+print("Maximum date:", max_date)
+
+--- CELL 40 [code] ---
+missing_markers = {
+    "date_question_marks": 0,
+    "sum_click_question_marks": 0,
+    "negative_click_values": 0
+}
+
+for chunk in pd.read_csv(
+    student_vle_path,
+    chunksize=100_000,
+    dtype={"date": "string", "sum_click": "string"}
+):
+    missing_markers["date_question_marks"] += (
+        chunk["date"] == "?"
+    ).sum()
+
+    missing_markers["sum_click_question_marks"] += (
+        chunk["sum_click"] == "?"
+    ).sum()
+
+    numeric_clicks = pd.to_numeric(
+        chunk["sum_click"],
+        errors="coerce"
+    )
+
+    missing_markers["negative_click_values"] += (
+        numeric_clicks < 0
+    ).sum()
+
+print(missing_markers)
+
+--- CELL 41 [code] ---
+datasets = {
+    "student_info": student_info,
+    "student_registration": student_registration,
+    "student_assessment": student_assessment,
+    "assessments": assessments,
+    "courses": courses,
+    "vle": vle,
+}
+
+for name, df in datasets.items():
+    print(f"{name}: {df.shape}")
+
+
+--- CELL 42 [code] ---
+print("Student records:", len(student_info))
+print(
+    "Unique student-course-presentation combinations:",
+    student_info[
+        ["id_student", "code_module", "code_presentation"]
+    ].drop_duplicates().shape[0]
+)
+
+print("\nStudent assessment IDs matching student_info:")
+print(
+    student_assessment["id_student"].isin(
+        student_info["id_student"]
+    ).sum(),
+    "out of",
+    len(student_assessment)
+)
+
+--- CELL 43 [code] ---
+# Step 3.1: Inspect registration information for Day 28 cohort creation
+
+student_registration.head()
+
+--- CELL 44 [code] ---
+student_registration.info()
+
+--- CELL 45 [code] ---
+student_registration["date_registration"].value_counts(dropna=False).head(10)
+
+--- CELL 46 [code] ---
+student_registration["date_unregistration"].value_counts(dropna=False).head(10)
+
+--- CELL 47 [code] ---
+import pandas as pd
+
+# Make a copy so the original dataset stays unchanged
+registration = student_registration.copy()
+
+# Convert date columns from text to numbers.
+# The "?" values become missing values (NaN).
+registration["date_registration_num"] = pd.to_numeric(
+    registration["date_registration"].replace("?", pd.NA),
+    errors="coerce"
+)
+
+registration["date_unregistration_num"] = pd.to_numeric(
+    registration["date_unregistration"].replace("?", pd.NA),
+    errors="coerce"
+)
+
+# A student is excluded if their recorded withdrawal happened
+# on or before Day 28.
+# Missing withdrawal date or withdrawal after Day 28 = eligible.
+registration["eligible_day28"] = (
+    registration["date_unregistration_num"].isna()
+    | (registration["date_unregistration_num"] > 28)
+)
+
+# Keep only eligible student-course-presentation records
+cohort_day28 = registration.loc[
+    registration["eligible_day28"]
+].copy()
+
+print("Original registration records:", len(registration))
+print("Eligible Day 28 records:", len(cohort_day28))
+print("Excluded (withdrew on/before Day 28):",
+      (~registration["eligible_day28"]).sum())
+
+cohort_day28.head()
+
+--- CELL 48 [code] ---
+print(
+    "Missing registration dates:",
+    registration["date_registration_num"].isna().sum()
+)
+
+print(
+    "Registered after Day 28:",
+    (registration["date_registration_num"] > 28).sum()
+)
+
+print(
+    "Registered on or before Day 28:",
+    (registration["date_registration_num"] <= 28).sum()
+)
+
+--- CELL 49 [code] ---
+# Keep records with a known registration date on or before Day 28
+registered_by_day28 = (
+    registration["date_registration_num"].notna()
+    & (registration["date_registration_num"] <= 28)
+)
+
+# Keep students who had not withdrawn by Day 28
+not_withdrawn_by_day28 = (
+    registration["date_unregistration_num"].isna()
+    | (registration["date_unregistration_num"] > 28)
+)
+
+# Apply both eligibility conditions
+cohort_day28 = registration.loc[
+    registered_by_day28 & not_withdrawn_by_day28
+].copy()
+
+print("Final Day 28 cohort:", len(cohort_day28))
+print("Missing registration dates excluded:",
+      registration["date_registration_num"].isna().sum())
+print("Registered after Day 28 excluded:",
+      (registration["date_registration_num"] > 28).sum())
+print("Withdrawn on/before Day 28 excluded:",
+      (registration["date_unregistration_num"] <= 28).sum())
+
+--- CELL 50 [code] ---
+# Keep only the identifiers and target from student_info
+outcomes = student_info[
+    [
+        "id_student",
+        "code_module",
+        "code_presentation",
+        "final_result"
+    ]
+].copy()
+
+# Attach outcomes to the eligible Day 28 cohort
+cohort_day28 = cohort_day28.merge(
+    outcomes,
+    on=["id_student", "code_module", "code_presentation"],
+    how="left",
+    validate="one_to_one"
+)
+
+print("Cohort records after outcome merge:", len(cohort_day28))
+print("Missing final outcomes:", cohort_day28["final_result"].isna().sum())
+
+print("\nTarget distribution:")
+print(cohort_day28["final_result"].value_counts(dropna=False))
+
+print("\nTarget percentages:")
+print(
+    (cohort_day28["final_result"].value_counts(normalize=True, dropna=False) * 100)
+    .round(2)
+)
+
+--- CELL 51 [code] ---
+# Step 3.4: Prepare assessment records for the Day 28 cutoff
+
+# Copy the assessment data
+assessment_records = student_assessment.copy()
+
+# Convert submission dates to numeric values
+assessment_records["date_submitted_num"] = pd.to_numeric(
+    assessment_records["date_submitted"].replace("?", pd.NA),
+    errors="coerce"
+)
+
+# Keep only submissions available by the end of Day 28
+early_assessments = assessment_records[
+    assessment_records["date_submitted_num"].notna()
+    & (assessment_records["date_submitted_num"] <= 28)
+].copy()
+
+print("All assessment records:", len(assessment_records))
+print("Assessment records submitted by Day 28:", len(early_assessments))
+
+early_assessments.head()
+
+--- CELL 52 [code] ---
+# Attach module, presentation, and assessment type
+early_assessments = early_assessments.merge(
+    assessments[
+        ["id_assessment", "code_module", "code_presentation", "assessment_type"]
+    ],
+    on="id_assessment",
+    how="left",
+    validate="many_to_one"
+)
+
+# Keep only records belonging to our eligible Day 28 cohort
+early_assessments = early_assessments.merge(
+    cohort_day28[
+        ["id_student", "code_module", "code_presentation"]
+    ],
+    on=["id_student", "code_module", "code_presentation"],
+    how="inner",
+    validate="many_to_one"
+)
+
+print("Eligible early assessment records:", len(early_assessments))
+print("Missing assessment types:", early_assessments["assessment_type"].isna().sum())
+
+early_assessments.head()
+
+--- CELL 53 [code] ---
+assessment_features = (
+    early_assessments
+    .groupby(["id_student", "code_module", "code_presentation"])
+    .agg(
+        early_assessment_count=("id_assessment", "count"),
+        early_mean_score=("score_numeric", "mean"),
+        early_max_score=("score_numeric", "max"),
+        early_min_score=("score_numeric", "min")
+    )
+    .reset_index()
+)
+
+print("Students with at least one early assessment:", len(assessment_features))
+assessment_features.head()
+
+--- CELL 54 [code] ---
+from pathlib import Path
+
+possible_paths = [
+    Path("../data/raw/studentVle.csv"),
+    Path("data/raw/studentVle.csv"),
+]
+
+vle_path = next((p for p in possible_paths if p.exists()), None)
+
+if vle_path is None:
+    raise FileNotFoundError(
+        "Could not find studentVle.csv. Check that the notebook is inside "
+        "EduGuard_AI/notebooks and the CSV is inside data/raw."
+    )
+
+print("Using file:", vle_path.resolve())
+
+--- CELL 55 [code] ---
+import pandas as pd
+
+chunk_size = 100_000
+
+# Keep only cohort identifiers for matching
+cohort_keys = cohort_day28[
+    ["id_student", "code_module", "code_presentation"]
+].drop_duplicates()
+
+click_parts = []
+active_day_parts = []
+site_parts = []
+
+for chunk in pd.read_csv(vle_path, chunksize=chunk_size):
+
+    # Keep activity recorded by the end of Day 28
+    chunk = chunk[chunk["date"] <= 28].copy()
+
+    if chunk.empty:
+        continue
+
+    # Keep only activity belonging to our eligible cohort
+    chunk = chunk.merge(
+        cohort_keys,
+        on=["id_student", "code_module", "code_presentation"],
+        how="inner",
+        validate="many_to_one"
+    )
+
+    if chunk.empty:
+        continue
+
+    keys = ["id_student", "code_module", "code_presentation"]
+
+    # Total clicks by student/course/presentation
+    click_parts.append(
+        chunk.groupby(keys, as_index=False)["sum_click"]
+        .sum()
+        .rename(columns={"sum_click": "early_total_clicks"})
+    )
+
+    # Record student activity by day; duplicates are removed later
+    active_day_parts.append(
+        chunk[keys + ["date"]].drop_duplicates()
+    )
+
+    # Record which VLE sites each student accessed
+    site_parts.append(
+        chunk[keys + ["id_site"]].drop_duplicates()
+    )
+
+print("Finished reading and filtering VLE chunks.")
+print("Click summary chunks:", len(click_parts))
+print("Active-day chunks:", len(active_day_parts))
+print("Site chunks:", len(site_parts))
+
+--- CELL 56 [code] ---
+keys = ["id_student", "code_module", "code_presentation"]
+
+# Combine total clicks across chunks
+vle_click_features = (
+    pd.concat(click_parts, ignore_index=True)
+    .groupby(keys, as_index=False)["early_total_clicks"]
+    .sum()
+)
+
+# Count distinct active days
+vle_active_day_features = (
+    pd.concat(active_day_parts, ignore_index=True)
+    .drop_duplicates(keys + ["date"])
+    .groupby(keys, as_index=False)
+    .size()
+    .rename(columns={"size": "early_active_days"})
+)
+
+# Count distinct VLE sites accessed
+vle_site_features = (
+    pd.concat(site_parts, ignore_index=True)
+    .drop_duplicates(keys + ["id_site"])
+    .groupby(keys, as_index=False)
+    .size()
+    .rename(columns={"size": "early_unique_sites"})
+)
+
+# Combine the three VLE feature summaries
+vle_features = (
+    vle_click_features
+    .merge(vle_active_day_features, on=keys, how="outer", validate="one_to_one")
+    .merge(vle_site_features, on=keys, how="outer", validate="one_to_one")
+)
+
+print("Students with VLE activity by Day 28:", len(vle_features))
+vle_features.head()
+
+--- CELL 57 [code] ---
+keys = ["id_student", "code_module", "code_presentation"]
+
+# Start with the complete eligible cohort and its target
+model_data = cohort_day28[
+    keys + ["date_registration_num", "final_result"]
+].copy()
+
+# Add early assessment features
+model_data = model_data.merge(
+    assessment_features,
+    on=keys,
+    how="left",
+    validate="one_to_one"
+)
+
+# Add early VLE features
+model_data = model_data.merge(
+    vle_features,
+    on=keys,
+    how="left",
+    validate="one_to_one"
+)
+
+# Add student background features
+background_columns = [
+    "gender",
+    "region",
+    "highest_education",
+    "imd_band",
+    "age_band",
+    "num_of_prev_attempts",
+    "studied_credits",
+    "disability"
+]
+
+background_features = student_info[
+    keys + background_columns
+].copy()
+
+model_data = model_data.merge(
+    background_features,
+    on=keys,
+    how="left",
+    validate="one_to_one"
+)
+
+# Students with no recorded early activity have zero activity counts
+count_columns = [
+    "early_assessment_count",
+    "early_total_clicks",
+    "early_active_days",
+    "early_unique_sites"
+]
+
+model_data[count_columns] = model_data[count_columns].fillna(0)
+
+print("Rows in combined dataset:", len(model_data))
+print("Columns in combined dataset:", len(model_data.columns))
+print("\nMissing values per column:")
+print(model_data.isna().sum())
+
+model_data.head()
+
+--- CELL 58 [code] ---
+# Check whether missing scores mean no early assessment,
+# or an assessment record exists but its score is missing.
+
+print("Rows with no early assessment:")
+print((model_data["early_assessment_count"] == 0).sum())
+
+print("\nRows with missing early mean score:")
+print(model_data["early_mean_score"].isna().sum())
+
+print("\nRows with an assessment count but missing mean score:")
+print(
+    (
+        (model_data["early_assessment_count"] > 0)
+        & model_data["early_mean_score"].isna()
+    ).sum()
+)
+
+print("\nRows with an assessment count and a valid mean score:")
+print(
+    (
+        (model_data["early_assessment_count"] > 0)
+        & model_data["early_mean_score"].notna()
+    ).sum()
+)
+
+--- CELL 59 [code] ---
+background_columns = [
+    "gender",
+    "region",
+    "highest_education",
+    "imd_band",
+    "age_band",
+    "disability"
+]
+
+for column in background_columns:
+    print(f"\n{column}:")
+    print(model_data[column].value_counts(dropna=False).head(10))
+
+--- CELL 60 [code] ---
+# Inspect students who have early assessment records but no numeric score
+
+six_records = model_data[
+    (model_data["early_assessment_count"] > 0)
+    & model_data["early_mean_score"].isna()
+]
+
+six_records[
+    keys + [
+        "early_assessment_count",
+        "early_mean_score",
+        "early_max_score",
+        "early_min_score"
+    ]
+]
+
+--- CELL 61 [code] ---
+background_columns = [
+    "gender",
+    "region",
+    "highest_education",
+    "imd_band",
+    "age_band",
+    "disability"
+]
+
+for column in background_columns:
+    print(f"{column}: {(model_data[column] == '?').sum()} '?' values")
+
+--- CELL 62 [code] ---
+print("Columns:", six_records.columns.tolist())
+
+print(
+    six_records[
+        [
+            "id_student",
+            "code_module",
+            "code_presentation",
+            "early_assessment_count",
+            "early_mean_score",
+            "early_max_score",
+            "early_min_score"
+        ]
+    ].to_string(index=False)
+)
+
+--- CELL 63 [code] ---
+six_keys = six_records[
+    ["id_student", "code_module", "code_presentation"]
+]
+
+six_source_records = early_assessments.merge(
+    six_keys,
+    on=["id_student", "code_module", "code_presentation"],
+    how="inner"
+)
+
+print(
+    six_source_records[
+        [
+            "id_student",
+            "code_module",
+            "code_presentation",
+            "id_assessment",
+            "date_submitted_num",
+            "score",
+            "score_numeric"
+        ]
+    ].to_string(index=False)
+)
+
+--- CELL 64 [code] ---
+print(
+    six_source_records[
+        [
+            "id_student",
+            "code_module",
+            "code_presentation",
+            "id_assessment",
+            "date_submitted_num",
+            "score",
+            "score_numeric"
+        ]
+    ].to_string(index=False)
+)
+
+--- CELL 65 [code] ---
+# Keep identifiers separately for later prediction tracking
+record_ids = model_data[
+    ["id_student", "code_module", "code_presentation"]
+].copy()
+
+# Create a modeling copy
+clean_data = model_data.copy()
+
+# Convert OULAD's "?" marker to a true missing value
+clean_data["imd_band"] = clean_data["imd_band"].replace("?", pd.NA)
+
+# Remove student ID from model inputs
+clean_data = clean_data.drop(columns=["id_student"])
+
+print("Clean dataset shape:", clean_data.shape)
+print("\nMissing values:")
+print(clean_data.isna().sum())
+
+print("\nTarget values:")
+print(clean_data["final_result"].value_counts())
+
+--- CELL 66 [code] ---
+# Separate target from model input features
+X = clean_data.drop(columns=["final_result"])
+y = clean_data["final_result"]
+
+print("Feature matrix shape:", X.shape)
+print("Target shape:", y.shape)
+
+print("\nTarget classes:")
+print(y.value_counts())
+
+print("\nFeature columns:")
+print(X.columns.tolist())
+
+--- CELL 67 [code] ---
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+print("Training features:", X_train.shape)
+print("Testing features:", X_test.shape)
+
+print("\nTraining target distribution (%):")
+print((y_train.value_counts(normalize=True) * 100).round(2))
+
+print("\nTesting target distribution (%):")
+print((y_test.value_counts(normalize=True) * 100).round(2))
+
+--- CELL 68 [code] ---
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+
+# Numeric features
+numeric_features = [
+    "date_registration_num",
+    "early_assessment_count",
+    "early_mean_score",
+    "early_max_score",
+    "early_min_score",
+    "early_total_clicks",
+    "early_active_days",
+    "early_unique_sites",
+    "num_of_prev_attempts",
+    "studied_credits"
+]
+
+# Categorical features
+categorical_features = [
+    "code_module",
+    "code_presentation",
+    "gender",
+    "region",
+    "highest_education",
+    "imd_band",
+    "age_band",
+    "disability"
+]
+
+# Preprocess numeric columns
+numeric_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="median"))
+])
+
+# Preprocess categorical columns
+categorical_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("onehot", OneHotEncoder(handle_unknown="ignore"))
+])
+
+# Combine preprocessing for both feature types
+preprocessor = ColumnTransformer(transformers=[
+    ("num", numeric_transformer, numeric_features),
+    ("cat", categorical_transformer, categorical_features)
+])
+
+# Create the complete model pipeline
+model_pipeline = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("classifier", RandomForestClassifier(
+        n_estimators=200,
+        random_state=42,
+        class_weight="balanced",
+        n_jobs=-1
+    ))
+])
+
+print("Preprocessing and Random Forest pipeline created successfully.")
+
+--- CELL 69 [code] ---
+model_pipeline.fit(X_train, y_train)
+
+print("Baseline Random Forest model trained successfully!")
+
+--- CELL 70 [code] ---
+try:
+    model_pipeline.fit(X_train, y_train)
+    print("Baseline Random Forest model trained successfully!")
+
+except Exception as error:
+    print("Error type:", type(error).__name__)
+    print("Error details:", error)
+    raise
+
+--- CELL 71 [code] ---
+import numpy as np
+
+# Convert pandas missing markers to NumPy NaN in categorical columns
+for column in categorical_features:
+    X_train[column] = X_train[column].astype(object).where(
+        X_train[column].notna(),
+        np.nan
+    )
+
+    X_test[column] = X_test[column].astype(object).where(
+        X_test[column].notna(),
+        np.nan
+    )
+
+print("Categorical missing values standardized.")
+print("Missing values in training categorical features:")
+print(X_train[categorical_features].isna().sum())
+
+--- CELL 72 [code] ---
+model_pipeline.fit(X_train, y_train)
+
+print("Baseline Random Forest model trained successfully!")
+
+--- CELL 73 [code] ---
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay
+)
+import matplotlib.pyplot as plt
+
+# Predict outcomes for the test set
+y_pred = model_pipeline.predict(X_test)
+
+# Calculate evaluation metrics
+accuracy = accuracy_score(y_test, y_pred)
+balanced_accuracy = balanced_accuracy_score(y_test, y_pred)
+macro_f1 = f1_score(y_test, y_pred, average="macro")
+
+print(f"Accuracy:          {accuracy:.4f}")
+print(f"Balanced Accuracy: {balanced_accuracy:.4f}")
+print(f"Macro F1-score:    {macro_f1:.4f}")
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, zero_division=0))
+
+--- CELL 74 [code] ---
+class_labels = ["Pass", "Distinction", "Fail", "Withdrawn"]
+
+cm = confusion_matrix(
+    y_test,
+    y_pred,
+    labels=class_labels
+)
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=class_labels
+)
+
+disp.plot(cmap="Blues", values_format="d")
+plt.title("EduGuard AI — Baseline Random Forest")
+plt.show()
+
+--- CELL 75 [code] ---
+# Recover student IDs for the records in each split.
+# The original row indexes are preserved by train_test_split.
+
+train_student_ids = set(
+    record_ids.loc[X_train.index, "id_student"]
+)
+
+test_student_ids = set(
+    record_ids.loc[X_test.index, "id_student"]
+)
+
+overlap_student_ids = train_student_ids.intersection(test_student_ids)
+
+print("Unique students in training:", len(train_student_ids))
+print("Unique students in testing:", len(test_student_ids))
+print("Students appearing in both sets:", len(overlap_student_ids))
+
+--- CELL 76 [code] ---
+from sklearn.model_selection import GroupShuffleSplit
+import numpy as np
+
+# Each student's records belong to only one split
+groups = record_ids.loc[X.index, "id_student"]
+
+group_splitter = GroupShuffleSplit(
+    n_splits=1,
+    test_size=0.20,
+    random_state=42
+)
+
+train_idx, test_idx = next(
+    group_splitter.split(X, y, groups=groups)
+)
+
+X_train = X.iloc[train_idx].copy()
+X_test = X.iloc[test_idx].copy()
+
+y_train = y.iloc[train_idx].copy()
+y_test = y.iloc[test_idx].copy()
+
+# Standardize categorical missing values for scikit-learn
+for column in categorical_features:
+    X_train[column] = X_train[column].astype(object).where(
+        X_train[column].notna(), np.nan
+    )
+    X_test[column] = X_test[column].astype(object).where(
+        X_test[column].notna(), np.nan
+    )
+
+train_student_ids = set(groups.iloc[train_idx])
+test_student_ids = set(groups.iloc[test_idx])
+
+print("Training records:", len(X_train))
+print("Testing records:", len(X_test))
+print("Unique students in training:", len(train_student_ids))
+print("Unique students in testing:", len(test_student_ids))
+print("Student overlap:", len(train_student_ids.intersection(test_student_ids)))
+
+print("\nTraining target distribution:")
+print((y_train.value_counts(normalize=True) * 100).round(2))
+
+print("\nTesting target distribution:")
+print((y_test.value_counts(normalize=True) * 100).round(2))
+
+--- CELL 77 [code] ---
+model_pipeline.fit(X_train, y_train)
+
+print("Random Forest retrained using student-grouped data.")
+
+--- CELL 78 [code] ---
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay
+)
+import matplotlib.pyplot as plt
+
+y_pred = model_pipeline.predict(X_test)
+
+print(f"Accuracy:          {accuracy_score(y_test, y_pred):.4f}")
+print(f"Balanced Accuracy: {balanced_accuracy_score(y_test, y_pred):.4f}")
+print(f"Macro F1-score:    {f1_score(y_test, y_pred, average='macro'):.4f}")
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, zero_division=0))
+
+class_labels = ["Pass", "Distinction", "Fail", "Withdrawn"]
+
+cm = confusion_matrix(y_test, y_pred, labels=class_labels)
+
+ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=class_labels
+).plot(cmap="Blues", values_format="d")
+
+plt.title("EduGuard AI — Student-Grouped Test Results")
+plt.show()
+
+--- CELL 79 [code] ---
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    classification_report
+)
+
+# Simple baseline: always predicts the most common training class
+dummy_model = DummyClassifier(strategy="most_frequent")
+dummy_model.fit(X_train, y_train)
+
+dummy_pred = dummy_model.predict(X_test)
+
+print("MAJORITY-CLASS BASELINE")
+print("------------------------")
+print(f"Accuracy:          {accuracy_score(y_test, dummy_pred):.4f}")
+print(f"Balanced Accuracy: {balanced_accuracy_score(y_test, dummy_pred):.4f}")
+print(f"Macro F1-score:    {f1_score(y_test, dummy_pred, average='macro'):.4f}")
+
+print("\nClassification Report:")
+print(classification_report(y_test, dummy_pred, zero_division=0))
+
+--- CELL 80 [code] ---
+from sklearn.model_selection import GroupShuffleSplit
+
+# Student IDs corresponding to the current training rows
+train_groups = record_ids.loc[X_train.index, "id_student"]
+
+# Split training data into model-training and validation portions
+validation_splitter = GroupShuffleSplit(
+    n_splits=1,
+    test_size=0.20,
+    random_state=42
+)
+
+subtrain_idx, val_idx = next(
+    validation_splitter.split(X_train, y_train, groups=train_groups)
+)
+
+X_subtrain = X_train.iloc[subtrain_idx].copy()
+X_val = X_train.iloc[val_idx].copy()
+
+y_subtrain = y_train.iloc[subtrain_idx].copy()
+y_val = y_train.iloc[val_idx].copy()
+
+print("Model-training records:", len(X_subtrain))
+print("Validation records:", len(X_val))
+
+subtrain_students = set(train_groups.iloc[subtrain_idx])
+validation_students = set(train_groups.iloc[val_idx])
+
+print(
+    "Student overlap:",
+    len(subtrain_students.intersection(validation_students))
+)
+
+print("\nValidation class distribution:")
+print(y_val.value_counts())
+
+--- CELL 81 [code] ---
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay
+)
+import matplotlib.pyplot as plt
+
+# Train using only the model-training portion
+model_pipeline.fit(X_subtrain, y_subtrain)
+
+# Predict the validation outcomes
+y_val_pred = model_pipeline.predict(X_val)
+
+# Display metrics
+print(f"Accuracy:          {accuracy_score(y_val, y_val_pred):.4f}")
+print(f"Balanced Accuracy: {balanced_accuracy_score(y_val, y_val_pred):.4f}")
+print(f"Macro F1-score:    {f1_score(y_val, y_val_pred, average='macro'):.4f}")
+
+print("\nValidation Classification Report:")
+print(classification_report(y_val, y_val_pred, zero_division=0))
+
+--- CELL 82 [code] ---
+class_labels = ["Pass", "Distinction", "Fail", "Withdrawn"]
+
+cm_val = confusion_matrix(
+    y_val,
+    y_val_pred,
+    labels=class_labels
+)
+
+ConfusionMatrixDisplay(
+    confusion_matrix=cm_val,
+    display_labels=class_labels
+).plot(cmap="Blues", values_format="d")
+
+plt.title("EduGuard AI — Validation Baseline")
+plt.show()
+
+--- CELL 83 [code] ---
+from sklearn.base import clone
+
+# Copy the existing pipeline without changing the original
+rf_subsample = clone(model_pipeline)
+
+# Use balanced class weights for each tree's bootstrap sample
+rf_subsample.set_params(
+    classifier__class_weight="balanced_subsample"
+)
+
+rf_subsample.fit(X_subtrain, y_subtrain)
+
+print("Alternative Random Forest trained successfully.")
+
+--- CELL 84 [code] ---
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    classification_report
+)
+
+y_val_pred_subsample = rf_subsample.predict(X_val)
+
+print(f"Accuracy:          {accuracy_score(y_val, y_val_pred_subsample):.4f}")
+print(f"Balanced Accuracy: {balanced_accuracy_score(y_val, y_val_pred_subsample):.4f}")
+print(f"Macro F1-score:    {f1_score(y_val, y_val_pred_subsample, average='macro'):.4f}")
+
+print("\nClassification Report:")
+print(classification_report(y_val, y_val_pred_subsample, zero_division=0))
+
+--- CELL 85 [code] ---
+from sklearn.metrics import recall_score
+import pandas as pd
+
+comparison = pd.DataFrame(
+    {
+        "Balanced weights": [
+            accuracy_score(y_val, y_val_pred),
+            balanced_accuracy_score(y_val, y_val_pred),
+            f1_score(y_val, y_val_pred, average="macro"),
+            recall_score(y_val, y_val_pred, labels=["Fail"], average=None)[0],
+            recall_score(y_val, y_val_pred, labels=["Withdrawn"], average=None)[0]
+        ],
+        "Balanced subsample": [
+            accuracy_score(y_val, y_val_pred_subsample),
+            balanced_accuracy_score(y_val, y_val_pred_subsample),
+            f1_score(y_val, y_val_pred_subsample, average="macro"),
+            recall_score(y_val, y_val_pred_subsample, labels=["Fail"], average=None)[0],
+            recall_score(y_val, y_val_pred_subsample, labels=["Withdrawn"], average=None)[0]
+        ]
+    },
+    index=[
+        "Accuracy",
+        "Balanced accuracy",
+        "Macro F1",
+        "Fail recall",
+        "Withdrawn recall"
+    ]
+)
+
+comparison.round(4)
+
+--- CELL 86 [code] ---
+from sklearn.inspection import permutation_importance
+import pandas as pd
+
+# model_pipeline is the original balanced model,
+# fitted on X_subtrain and y_subtrain in the previous step.
+
+perm_result = permutation_importance(
+    model_pipeline,
+    X_val,
+    y_val,
+    scoring="f1_macro",
+    n_repeats=3,
+    random_state=42,
+    n_jobs=-1
+)
+
+feature_importance = pd.DataFrame({
+    "feature": X_val.columns,
+    "importance_mean": perm_result.importances_mean,
+    "importance_std": perm_result.importances_std
+}).sort_values("importance_mean", ascending=False)
+
+feature_importance.round(4)
+
+--- CELL 87 [code] ---
+import matplotlib.pyplot as plt
+
+top_features = feature_importance.head(12).sort_values(
+    "importance_mean"
+)
+
+plt.figure(figsize=(9, 6))
+plt.barh(
+    top_features["feature"],
+    top_features["importance_mean"],
+    xerr=top_features["importance_std"]
+)
+plt.xlabel("Decrease in validation macro F1 after shuffling")
+plt.title("EduGuard AI — Permutation Feature Importance")
+plt.tight_layout()
+plt.show()
+
+--- CELL 88 [code] ---
+print("Pipeline steps:")
+for step_name, step_object in model_pipeline.named_steps.items():
+    print(f"{step_name}: {type(step_object).__name__}")
+
+--- CELL 89 [code] ---
+from sklearn.base import clone
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    recall_score
+)
+import pandas as pd
+
+# Candidate Random Forest settings
+experiments = {
+    "Current baseline": {
+        "n_estimators": 200,
+        "max_depth": None,
+        "min_samples_leaf": 1
+    },
+    "Limited depth": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_leaf": 1
+    },
+    "Larger leaf": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_leaf": 5
+    }
+}
+
+results = []
+
+for experiment_name, parameters in experiments.items():
+
+    candidate = clone(model_pipeline)
+
+    candidate.set_params(
+        classifier__n_estimators=parameters["n_estimators"],
+        classifier__max_depth=parameters["max_depth"],
+        classifier__min_samples_leaf=parameters["min_samples_leaf"]
+    )
+
+    candidate.fit(X_subtrain, y_subtrain)
+    predictions = candidate.predict(X_val)
+
+    results.append({
+        "Experiment": experiment_name,
+        "Accuracy": accuracy_score(y_val, predictions),
+        "Balanced Accuracy": balanced_accuracy_score(y_val, predictions),
+        "Macro F1": f1_score(y_val, predictions, average="macro"),
+        "Fail Recall": recall_score(
+            y_val, predictions, labels=["Fail"], average=None
+        )[0],
+        "Withdrawn Recall": recall_score(
+            y_val, predictions, labels=["Withdrawn"], average=None
+        )[0],
+        "Distinction Recall": recall_score(
+            y_val, predictions, labels=["Distinction"], average=None
+        )[0]
+    })
+
+comparison_results = pd.DataFrame(results).set_index("Experiment")
+
+display(comparison_results.round(4))
+
+--- CELL 90 [code] ---
+from sklearn.base import clone
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+candidate_models = {
+    "Limited depth": {
+        "max_depth": 15,
+        "min_samples_leaf": 1
+    },
+    "Larger leaf": {
+        "max_depth": 15,
+        "min_samples_leaf": 5
+    }
+}
+
+class_labels = ["Pass", "Distinction", "Fail", "Withdrawn"]
+
+for name, params in candidate_models.items():
+
+    candidate = clone(model_pipeline)
+
+    candidate.set_params(
+        classifier__n_estimators=200,
+        classifier__max_depth=params["max_depth"],
+        classifier__min_samples_leaf=params["min_samples_leaf"]
+    )
+
+    candidate.fit(X_subtrain, y_subtrain)
+    predictions = candidate.predict(X_val)
+
+    print(f"\n{name} — Classification Report")
+    print(classification_report(
+        y_val,
+        predictions,
+        labels=class_labels,
+        zero_division=0
+    ))
+
+    cm = confusion_matrix(
+        y_val,
+        predictions,
+        labels=class_labels
+    )
+
+    ConfusionMatrixDisplay(
+        confusion_matrix=cm,
+        display_labels=class_labels
+    ).plot(cmap="Blues", values_format="d")
+
+    plt.title(f"EduGuard AI — {name}")
+    plt.show()
+
+--- CELL 91 [code] ---
+from sklearn.base import clone
+
+# Candidate selected using validation results
+final_candidate = clone(model_pipeline)
+
+final_candidate.set_params(
+    classifier__n_estimators=200,
+    classifier__max_depth=15,
+    classifier__min_samples_leaf=5,
+    classifier__class_weight="balanced"
+)
+
+# Train using the full training split
+final_candidate.fit(X_train, y_train)
+
+print("Candidate trained on the complete training set.")
+
+--- CELL 92 [code] ---
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay
+)
+import matplotlib.pyplot as plt
+
+y_test_pred = final_candidate.predict(X_test)
+
+print(f"Accuracy:          {accuracy_score(y_test, y_test_pred):.4f}")
+print(f"Balanced Accuracy: {balanced_accuracy_score(y_test, y_test_pred):.4f}")
+print(f"Macro F1-score:    {f1_score(y_test, y_test_pred, average='macro'):.4f}")
+
+print("\nFinal Test Classification Report:")
+print(classification_report(y_test, y_test_pred, zero_division=0))
+
+class_labels = ["Pass", "Distinction", "Fail", "Withdrawn"]
+
+cm_test = confusion_matrix(
+    y_test,
+    y_test_pred,
+    labels=class_labels
+)
+
+ConfusionMatrixDisplay(
+    confusion_matrix=cm_test,
+    display_labels=class_labels
+).plot(cmap="Blues", values_format="d")
+
+plt.title("EduGuard AI — Candidate Final Test Evaluation")
+plt.show()
+
+--- CELL 93 [code] ---
+from sklearn.pipeline import Pipeline
+
+for name, obj in globals().copy().items():
+    if isinstance(obj, Pipeline):
+        print(name, "→", obj)
+
+--- CELL 94 [code] ---
+print("Is final_candidate trained?",
+      hasattr(final_candidate.named_steps["classifier"], "estimators_"))
+
+print("Is candidate trained?",
+      hasattr(candidate.named_steps["classifier"], "estimators_"))
+
+--- CELL 95 [code] ---
+import joblib
+from pathlib import Path
+
+# Create the models folder inside EduGuard_AI
+project_root = Path.cwd().parent
+models_folder = project_root / "models"
+models_folder.mkdir(parents=True, exist_ok=True)
+
+# Save the complete trained pipeline
+model_path = models_folder / "eduguard_model.joblib"
+
+joblib.dump(final_candidate, model_path)
+
+print("Model saved successfully!")
+print("Saved location:", model_path)
+print("File exists:", model_path.exists())
+
+--- CELL 96 [code] ---
+from pathlib import Path
+
+print("Notebook working directory:")
+print(Path.cwd())
+
+print("\nDoes the EduGuard_AI folder exist here?")
+print((Path.cwd() / "EduGuard_AI").exists())
+
+--- CELL 97 [code] ---
+from pathlib import Path
+import joblib
+
+# Use the current directory: EduGuard_AI
+project_root = Path.cwd()
+
+# Create models folder inside EduGuard_AI
+models_folder = project_root / "models"
+models_folder.mkdir(parents=True, exist_ok=True)
+
+# Save the trained pipeline
+model_path = models_folder / "eduguard_model.joblib"
+joblib.dump(final_candidate, model_path)
+
+print("Model saved successfully!")
+print("Correct location:", model_path)
+print("File exists:", model_path.exists())
+
+--- CELL 98 [code] ---
+import joblib
+
+# Load the saved model from the project folder
+loaded_model = joblib.load(model_path)
+
+print("Model loaded successfully!")
+
+# Compare predictions from the original and saved models
+sample = X_test.iloc[[0]]
+
+original_prediction = final_candidate.predict(sample)
+loaded_prediction = loaded_model.predict(sample)
+
+print("Original model prediction:", original_prediction[0])
+print("Saved model prediction:   ", loaded_prediction[0])
+print("Predictions match:", (original_prediction == loaded_prediction).all())
+
+--- CELL 99 [code] ---
+# Display the exact input columns expected by the trained model
+print("Number of input features:", len(X_train.columns))
+print("\nExpected input features:")
+
+for i, column in enumerate(X_train.columns, start=1):
+    print(f"{i}. {column}")
+
+--- CELL 100 [code] ---
+%pip install fastapi uvicorn
+
+
+--- CELL 101 [code] ---
+from pathlib import Path
+
+project_root = Path.cwd()
+app_path = project_root / "app.py"
+
+print("Project folder:", project_root)
+print("API file path:", app_path)
+print("File already exists:", app_path.exists())
+
+--- CELL 102 [code] ---
+from pathlib import Path
+
+project_root = Path.cwd()
+
+print("Current folder:", project_root)
+print("\nFiles and folders found:")
+
+for item in project_root.iterdir():
+    print(item.name)
+
+--- CELL 103 [code] ---
+from pathlib import Path
+
+app_path = Path.cwd() / "app.py"
+code = app_path.read_text(encoding="utf-8")
+
+print("App file found:", app_path.exists())
+print("Risk calculation present:", "risk_probability = (" in code)
+print("Risk returned in response:", '"risk_probability": round(risk_probability, 4)' in code)
+
+--- CELL 104 [code] ---
+from pathlib import Path
+
+app_code = r'''
+from pathlib import Path
+
+import joblib
+import pandas as pd
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+# Load the trained model
+PROJECT_DIR = Path(__file__).resolve().parent
+MODEL_PATH = PROJECT_DIR / "models" / "eduguard_model.joblib"
+
+model = joblib.load(MODEL_PATH)
+
+
+# Create the FastAPI application
+app = FastAPI(
+    title="EduGuard AI API",
+    description="Student Performance Prediction and Early Warning System",
+    version="1.0.0"
+)
+
+
+# Input schema: 18 features expected by the trained model
+class StudentInput(BaseModel):
+    code_module: str
+    code_presentation: str
+    date_registration_num: float
+    early_assessment_count: float
+    early_mean_score: float
+    early_max_score: float
+    early_min_score: float
+    early_total_clicks: float
+    early_active_days: float
+    early_unique_sites: float
+    gender: str
+    region: str
+    highest_education: str
+    imd_band: str
+    age_band: str
+    num_of_prev_attempts: float
+    studied_credits: float
+    disability: str
+
+
+@app.get("/")
+def home():
+    return {
+        "message": "EduGuard AI API is running",
+        "model_loaded": True
+    }
+
+
+@app.post("/predict")
+def predict_student_outcome(student: StudentInput):
+
+    # Convert submitted data into a one-row DataFrame
+    input_data = pd.DataFrame([student.model_dump()])
+
+    # Predict student outcome and class probabilities
+    prediction = model.predict(input_data)[0]
+    probabilities = model.predict_proba(input_data)[0]
+
+    # Map each class to its probability
+    probability_by_class = {
+        str(class_name): float(probability)
+        for class_name, probability in zip(model.classes_, probabilities)
+    }
+
+    # Combined model-estimated probability of Fail or Withdrawn
+    risk_probability = (
+        probability_by_class.get("Fail", 0.0)
+        + probability_by_class.get("Withdrawn", 0.0)
+    )
+
+    return {
+        "predicted_outcome": str(prediction),
+        "class_probabilities": {
+            name: round(probability, 4)
+            for name, probability in probability_by_class.items()
+        },
+        "risk_probability": round(risk_probability, 4),
+        "note": (
+            "Risk probability is the model-estimated combined probability "
+            "of Fail or Withdrawn. It is not a guaranteed outcome."
+        )
+    }
+'''
+
+app_path = Path.cwd() / "app.py"
+app_path.write_text(app_code, encoding="utf-8")
+
+# Verify the saved file
+saved_code = app_path.read_text(encoding="utf-8")
+
+print("Updated app.py successfully!")
+print("File exists:", app_path.exists())
+print("Risk calculation present:", "risk_probability = (" in saved_code)
+print("Risk returned in response:", '"risk_probability": round(risk_probability, 4)' in saved_code)
+
+--- CELL 105 [code] ---
+# Find the dataset and target variables currently available in memory
+
+for name in sorted(globals()):
+    if any(word in name.lower() for word in ["x_val", "y_val", "validation", "x_test", "y_test"]):
+        value = globals()[name]
+        print(f"{name}: {type(value).__name__}", end="")
+
+        if hasattr(value, "shape"):
+            print(f" | Shape: {value.shape}")
+        else:
+            print()
+
+--- CELL 106 [code] ---
+print("Variables containing train, val, or test:\n")
+
+for name in sorted(globals()):
+    if any(word in name.lower() for word in ["train", "val", "test"]):
+        value = globals()[name]
+
+        if hasattr(value, "shape"):
+            print(f"{name}: {type(value).__name__}, shape = {value.shape}")
+        else:
+            print(f"{name}: {type(value).__name__}")
+
+--- CELL 107 [code] ---
+from pathlib import Path
+
+project_root = Path.cwd()
+
+for folder_name in ["data", "models"]:
+    folder = project_root / folder_name
+    print(f"\n--- {folder_name.upper()} ---")
+
+    for item in folder.rglob("*"):
+        if item.is_file():
+            print(item.relative_to(project_root))
+
+--- CELL 108 [code] ---
+from pathlib import Path
+import json
+
+notebook_path = Path.cwd() / "01_oulad_dataset_exploration.ipynb"
+
+if not notebook_path.exists():
+    notebook_path = Path.cwd() / "notebooks" / "01_oulad_dataset_exploration.ipynb"
+
+print("Notebook found:", notebook_path.exists())
+print("Notebook path:", notebook_path)
+
+notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+
+print("\n--- Cells mentioning data splitting or validation ---")
+
+for i, cell in enumerate(notebook["cells"]):
+    if cell["cell_type"] == "code":
+        code = "".join(cell.get("source", []))
+
+        if any(term in code.lower() for term in [
+            "train_test_split",
+            "group",
+            "x_train",
+            "x_val",
+            "validation",
+            "test_size"
+        ]):
+            print(f"\n--- Cell {i} ---")
+            print(code[:2500])
+
+--- CELL 109 [code] ---
+from pathlib import Path
+import json
+
+notebook_path = Path.cwd() / "01_oulad_dataset_exploration.ipynb"
+
+if not notebook_path.exists():
+    notebook_path = Path.cwd() / "notebooks" / "01_oulad_dataset_exploration.ipynb"
+
+notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+
+for i in range(90, min(104, len(notebook["cells"]))):
+    cell = notebook["cells"][i]
+
+    if cell["cell_type"] == "code":
+        code = "".join(cell.get("source", []))
+        if code.strip():
+            print(f"\n--- Cell {i} ---")
+            print(code)
+
+--- CELL 110 [code] ---
+%pip install streamlit
+
+--- CELL 111 [code] ---
+from pathlib import Path
+
+frontend_code = r'''
+import requests
+import streamlit as st
+
+API_URL = "http://127.0.0.1:8000/predict"
+
+st.set_page_config(
+    page_title="EduGuard AI",
+    page_icon="🎓",
+    layout="wide"
+)
+
+st.title("🎓 EduGuard AI")
+st.subheader("Student Performance Prediction and Early Warning System")
+st.write(
+    "Enter a student's information and early learning activity "
+    "to receive a predicted academic outcome."
+)
+
+st.info(
+    "This is an experimental model. Its prediction is an estimate, "
+    "not a guaranteed student outcome."
+)
+
+with st.form("student_prediction_form"):
+
+    st.header("1. Course Information")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        code_module = st.selectbox(
+            "Module",
+            ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG"]
+        )
+
+    with col2:
+        code_presentation = st.selectbox(
+            "Presentation",
+            ["2013J", "2014J", "2013B", "2014B"]
+        )
+
+    date_registration_num = st.number_input(
+        "Registration date (days relative to course start)",
+        value=-30.0,
+        step=1.0
+    )
+
+    st.header("2. Early Learning Activity")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        early_assessment_count = st.number_input(
+            "Early assessments completed",
+            min_value=0,
+            value=2,
+            step=1
+        )
+
+        early_mean_score = st.number_input(
+            "Average early assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=75.0
+        )
+
+        early_max_score = st.number_input(
+            "Highest early assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=85.0
+        )
+
+        early_min_score = st.number_input(
+            "Lowest early assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=65.0
+        )
+
+    with col2:
+        early_total_clicks = st.number_input(
+            "Total VLE clicks by Day 28",
+            min_value=0,
+            value=120,
+            step=1
+        )
+
+        early_active_days = st.number_input(
+            "Active learning days",
+            min_value=0,
+            max_value=28,
+            value=15,
+            step=1
+        )
+
+        early_unique_sites = st.number_input(
+            "Unique learning resources accessed",
+            min_value=0,
+            value=8,
+            step=1
+        )
+
+    st.header("3. Student Background")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        gender = st.selectbox("Gender", ["M", "F"])
+
+        region = st.selectbox(
+            "Region",
+            [
+                "East Anglian Region",
+                "Scotland",
+                "North Western Region",
+                "South East Region",
+                "West Midlands Region",
+                "Wales",
+                "North Region",
+                "South Region",
+                "South West Region",
+                "East Midlands Region",
+                "Yorkshire Region",
+                "London Region",
+                "South West England",
+                "East Midlands",
+                "Other Region"
+            ]
+        )
+
+        highest_education = st.selectbox(
+            "Highest education",
+            [
+                "A Level or Equivalent",
+                "HE Qualification",
+                "Lower Than A Level",
+                "Post Graduate Qualification",
+                "No Formal quals"
+            ]
+        )
+
+    with col2:
+        imd_band = st.selectbox(
+            "IMD band",
+            [
+                "0-10%",
+                "10-20%",
+                "20-30%",
+                "30-40%",
+                "40-50%",
+                "50-60%",
+                "60-70%",
+                "70-80%",
+                "80-90%",
+                "90-100%",
+                "Unknown"
+            ]
+        )
+
+        age_band = st.selectbox(
+            "Age band",
+            ["0-35", "35-55", "55<="]
+        )
+
+        num_of_prev_attempts = st.number_input(
+            "Previous attempts",
+            min_value=0,
+            value=0,
+            step=1
+        )
+
+    with col3:
+        studied_credits = st.number_input(
+            "Studied credits",
+            min_value=0,
+            value=60,
+            step=1
+        )
+
+        disability = st.selectbox(
+            "Declared disability",
+            ["N", "Y"]
+        )
+
+    submitted = st.form_submit_button(
+        "Predict Student Outcome",
+        type="primary",
+        use_container_width=True
+    )
+
+if submitted:
+
+    student_data = {
+        "code_module": code_module,
+        "code_presentation": code_presentation,
+        "date_registration_num": date_registration_num,
+        "early_assessment_count": early_assessment_count,
+        "early_mean_score": early_mean_score,
+        "early_max_score": early_max_score,
+        "early_min_score": early_min_score,
+        "early_total_clicks": early_total_clicks,
+        "early_active_days": early_active_days,
+        "early_unique_sites": early_unique_sites,
+        "gender": gender,
+        "region": region,
+        "highest_education": highest_education,
+        "imd_band": imd_band,
+        "age_band": age_band,
+        "num_of_prev_attempts": num_of_prev_attempts,
+        "studied_credits": studied_credits,
+        "disability": disability
+    }
+
+    try:
+        with st.spinner("Getting prediction from EduGuard AI..."):
+            response = requests.post(
+                API_URL,
+                json=student_data,
+                timeout=30
+            )
+
+        if response.status_code == 200:
+            result = response.json()
+
+            st.header("Prediction Result")
+
+            outcome = result["predicted_outcome"]
+            risk = result["risk_probability"]
+
+            st.metric("Predicted Outcome", outcome)
+            st.metric("Estimated Risk of Fail or Withdrawal", f"{risk:.1%}")
+
+            st.subheader("Model-estimated class probabilities")
+
+            probabilities = result["class_probabilities"]
+
+            for class_name, probability in probabilities.items():
+                st.write(f"**{class_name}: {probability:.1%}**")
+                st.progress(float(probability))
+
+            st.caption(result.get("note", ""))
+
+            st.warning(
+                "Use this result as an early-support signal, not as a "
+                "final judgment about a student. The model's probabilities "
+                "are estimates and may be inaccurate."
+            )
+
+        else:
+            st.error(
+                f"API returned status {response.status_code}: "
+                f"{response.text}"
+            )
+
+    except requests.exceptions.ConnectionError:
+        st.error(
+            "Could not connect to the prediction API. "
+            "Make sure the FastAPI server is running at "
+            "http://127.0.0.1:8000."
+        )
+
+    except requests.exceptions.RequestException as error:
+        st.error(f"Request failed: {error}")
+'''
+
+frontend_path = Path.cwd() / "streamlit_app.py"
+frontend_path.write_text(frontend_code, encoding="utf-8")
+
+print("Frontend file created:", frontend_path)
+print("File exists:", frontend_path.exists())
+
+--- CELL 112 [code] ---
+import requests
+import streamlit as st
+
+# API address
+API_URL = "http://127.0.0.1:8000/predict"
+
+# Page setup
+st.set_page_config(
+    page_title="EduGuard AI",
+    page_icon="🎓",
+    layout="wide"
+)
+
+st.title("🎓 EduGuard AI")
+st.subheader("Student Performance Prediction and Early Warning System")
+
+st.write(
+    "Enter a student's course details and learning activity "
+    "to receive an estimated academic outcome."
+)
+
+st.info(
+    "This is an experimental AI model. Its predictions are estimates, "
+    "not guaranteed results or final academic decisions."
+)
+
+# --------------------------------------------------
+# GLOSSARY
+# --------------------------------------------------
+
+with st.expander("📘 What do these terms mean? Click to learn"):
+
+    st.markdown("""
+    ### Course Information
+    - **Module:** The course or subject the student is studying.
+    - **Presentation:** The academic session in which the course is offered.
+    - **Registration date:** Number of days between registration and the course start.
+      A negative number means the student registered before the course began.
+
+    ### Early Learning Activity
+    - **Assessments completed:** Number of assessments submitted by Day 28.
+    - **Mean score:** Average mark across the early assessments.
+    - **Highest score:** Highest mark received in an early assessment.
+    - **Lowest score:** Lowest mark received in an early assessment.
+    - **Total clicks:** Number of times the student clicked online learning materials.
+    - **Active days:** Number of different days the student accessed learning materials.
+    - **Unique sites:** Number of different online learning resources accessed.
+
+    ### Student Background
+    - **Gender:** Gender category recorded in the dataset.
+    - **Region:** Student's geographical region.
+    - **Highest education:** Student's previous education level.
+    - **IMD band:** A category describing the deprivation level of the student's area.
+    - **Age band:** Student's age group.
+    - **Previous attempts:** Number of earlier attempts at the same module.
+    - **Studied credits:** Number of academic credits the student is registered to study.
+    - **Disability:** Whether the student has declared a disability in the dataset.
+
+    ### Prediction Results
+    - **Predicted outcome:** The outcome category selected by the model.
+    - **Class probabilities:** The model's estimated probability for each outcome.
+    - **Estimated risk:** The model's Fail probability plus its Withdrawn probability.
+    - **Day 28:** The model uses information available during the first 28 days.
+    """)
+
+# --------------------------------------------------
+# INPUT FORM
+# --------------------------------------------------
+
+with st.form("student_form"):
+
+    st.header("1. Course Information")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        code_module = st.selectbox(
+            "Module",
+            ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG"],
+            help="Select the course or subject the student is enrolled in."
+        )
+
+    with col2:
+        code_presentation = st.selectbox(
+            "Presentation",
+            ["2013J", "2014J", "2013B", "2014B"],
+            help="Select the academic session in which the course is offered."
+        )
+
+    date_registration_num = st.number_input(
+        "Registration date",
+        value=-30,
+        step=1,
+        help="Number of days relative to the course start. Negative means registration before the course began."
+    )
+
+    st.divider()
+    st.header("2. Early Learning Activity")
+    st.caption("Enter information available during the first 28 days of the course.")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        early_assessment_count = st.number_input(
+            "Assessments completed",
+            min_value=0,
+            value=2,
+            step=1,
+            help="Number of assessments submitted by Day 28."
+        )
+
+        early_mean_score = st.number_input(
+            "Average assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=75.0,
+            help="Average mark across the student's early assessments."
+        )
+
+        early_max_score = st.number_input(
+            "Highest assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=85.0,
+            help="Highest mark received in an early assessment."
+        )
+
+        early_min_score = st.number_input(
+            "Lowest assessment score",
+            min_value=0.0,
+            max_value=100.0,
+            value=65.0,
+            help="Lowest mark received in an early assessment."
+        )
+
+    with col2:
+        early_total_clicks = st.number_input(
+            "Total learning-material clicks",
+            min_value=0,
+            value=120,
+            step=1,
+            help="Total number of clicks on online learning materials by Day 28."
+        )
+
+        early_active_days = st.number_input(
+            "Active learning days",
+            min_value=0,
+            max_value=28,
+            value=15,
+            step=1,
+            help="Number of different days the student accessed learning materials."
+        )
+
+        early_unique_sites = st.number_input(
+            "Different learning resources accessed",
+            min_value=0,
+            value=8,
+            step=1,
+            help="Number of different online learning resources the student accessed."
+        )
+
+    st.divider()
+    st.header("3. Student Background")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        gender = st.selectbox(
+            "Gender",
+            ["F", "M"],
+            help="Gender category recorded in the dataset."
+        )
+
+        region = st.selectbox(
+            "Region",
+            [
+                "East Anglian Region",
+                "East Midlands Region",
+                "Ireland",
+                "London Region",
+                "North Region",
+                "North Western Region",
+                "Scotland",
+                "South East Region",
+                "South Region",
+                "South West Region",
+                "Wales",
+                "West Midlands Region",
+                "Yorkshire Region"
+            ],
+            help="Geographical region recorded for the student."
+        )
+
+        highest_education = st.selectbox(
+            "Highest previous education",
+            [
+                "A Level or Equivalent",
+                "HE Qualification",
+                "Lower Than A Level",
+                "No Formal quals",
+                "Post Graduate Qualification"
+            ],
+            help="The student's highest recorded education level before this course."
+        )
+
+    with col2:
+        imd_band = st.selectbox(
+            "Area deprivation category (IMD band)",
+            [
+                "0-10%",
+                "10-20%",
+                "20-30%",
+                "30-40%",
+                "40-50%",
+                "50-60%",
+                "60-70%",
+                "70-80%",
+                "80-90%",
+                "90-100%",
+                "?"
+            ],
+            help="A dataset category representing the deprivation level of the student's area. '?' means unknown."
+        )
+
+        age_band = st.selectbox(
+            "Age group",
+            ["0-35", "35-55", "55<="],
+            help="The student's age category in the dataset."
+        )
+
+        num_of_prev_attempts = st.number_input(
+            "Previous attempts",
+            min_value=0,
+            value=0,
+            step=1,
+            help="Number of previous attempts at this module."
+        )
+
+    with col3:
+        studied_credits = st.number_input(
+            "Credits being studied",
+            min_value=0,
+            value=60,
+            step=10,
+            help="Total academic credits the student is registered to study."
+        )
+
+        disability = st.selectbox(
+            "Disability recorded",
+            ["N", "Y"],
+            help="Whether a disability is recorded in the dataset. N = No, Y = Yes."
+        )
+
+    submitted = st.form_submit_button(
+        "🔍 Predict Student Outcome",
+        use_container_width=True
+    )
+
+# --------------------------------------------------
+# SEND INPUT TO API AND DISPLAY RESULT
+# --------------------------------------------------
+
+if submitted:
+
+    student_data = {
+        "code_module": code_module,
+        "code_presentation": code_presentation,
+        "date_registration_num": date_registration_num,
+        "early_assessment_count": early_assessment_count,
+        "early_mean_score": early_mean_score,
+        "early_max_score": early_max_score,
+        "early_min_score": early_min_score,
+        "early_total_clicks": early_total_clicks,
+        "early_active_days": early_active_days,
+        "early_unique_sites": early_unique_sites,
+        "gender": gender,
+        "region": region,
+        "highest_education": highest_education,
+        "imd_band": imd_band,
+        "age_band": age_band,
+        "num_of_prev_attempts": num_of_prev_attempts,
+        "studied_credits": studied_credits,
+        "disability": disability
+    }
+
+    try:
+        response = requests.post(
+            API_URL,
+            json=student_data,
+            timeout=30
+        )
+
+        response.raise_for_status()
+        result = response.json()
+
+        st.divider()
+        st.header("📊 Prediction Result")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "Predicted outcome",
+                result["predicted_outcome"]
+            )
+
+        with col2:
+            risk = result["risk_probability"] * 100
+
+            st.metric(
+                "Estimated risk of Fail or Withdrawal",
+                f"{risk:.1f}%"
+            )
+
+        st.subheader("What does this result mean?")
+
+        st.write(
+            "The predicted outcome is the category selected by the AI model "
+            "based on the information entered."
+        )
+
+        st.write(
+            "The estimated risk combines the model's probabilities for "
+            "Fail and Withdrawn. It is not a guarantee that the student "
+            "will fail or withdraw."
+        )
+
+        st.subheader("Model-estimated class probabilities")
+
+        probabilities = result["class_probabilities"]
+
+        for outcome, probability in probabilities.items():
+            st.write(f"**{outcome}: {probability * 100:.1f}%**")
+            st.progress(float(probability))
+
+        st.warning(
+            "Use this prediction only as an additional support signal. "
+            "It should not replace instructor judgement, student discussion, "
+            "or other academic information."
+        )
+
+    except requests.exceptions.ConnectionError:
+        st.error(
+            "Could not connect to the prediction API. "
+            "Please check that the API server is running in its Command Prompt."
+        )
+
+    except requests.exceptions.RequestException as error:
+        st.error(f"Request failed: {error}")
+
+    except (KeyError, ValueError) as error:
+        st.error(f"Could not read the prediction result: {error}")
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+
+st.divider()
+st.caption(
+    "EduGuard AI | Experimental student performance prediction system "
+    "| Predictions are estimates, not guaranteed outcomes."
+)
+
+--- CELL 113 [code] ---
+
+
+
+================================================================================
+PROJECT FOLDER STRUCTURE
+================================================================================
+.ipynb_checkpoints\01_oulad_dataset_exploration-checkpoint.ipynb
+01_oulad_dataset_exploration.ipynb
+app.py
+data\raw\assessments.csv
+data\raw\courses.csv
+data\raw\OULAD.names
+data\raw\studentAssessment.csv
+data\raw\studentInfo.csv
+data\raw\studentRegistration.csv
+data\raw\studentVle.csv
+data\raw\vle.csv
+models\eduguard_model.joblib
+streamlit_app.py
